@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core import models, serializers
+from core.authentication import create_access_token, create_refresh_token
 
 
 class RegisterAPIView(APIView):
@@ -29,6 +30,13 @@ class LoginAPIView(APIView):
             raise exceptions.AuthenticationFailed("Invalid Credentials")
         if not user.check_password(password):
             raise exceptions.AuthenticationFailed("Invalid Credentials")
-        
-        serializer = serializers.UserSerializer(user)
-        return Response(serializer.data)
+
+        access_token = create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
+
+        response = Response()
+        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+        response.data = {
+            "token" : access_token
+        }
+        return response
