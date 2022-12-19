@@ -1,3 +1,8 @@
+import datetime
+import random
+import string
+
+from django.core.mail import send_mail
 from rest_framework import exceptions
 from rest_framework.authentication import get_authorization_header
 from rest_framework.response import Response
@@ -36,6 +41,11 @@ class LoginAPIView(APIView):
         access_token = create_access_token(user.id)
         refresh_token = create_refresh_token(user.id)
 
+        models.UserToken.objects.create(
+            user_id=user.id,
+            token=refresh_token,
+            expire_at=datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        )
         response = Response()
         response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
         response.data = {
@@ -72,15 +82,61 @@ class RefreshAPIView(APIView):
         refresh_token = request.COOKIES.get("refresh_token")
         id = decode_refresh_token(refresh_token)
 
+        if not models.UserToken.objects.filter(
+                user_id=id,
+                token=refresh_token,
+                expire_at__gt=datetime.datetime.now(tz=datetime.timezone.utc)
+        ).exists():
+            raise exceptions.AuthenticationFailed("unauthenticated")
+
         access_token = create_access_token(id)
         return Response({"token": access_token})
 
 
 class LogoutAPIView(APIView):
     def post(self, request):
+        refresh_token = request.COOKIES.get("refresh_token")
+        models.UserToken.objects.filter(token=refresh_token).delete()
         response = Response()
         response.delete_cookie(key="refresh_token")
         response.data = {
             "message": "success"
         }
         return response
+
+
+class ForgotAPIView(APIView):
+    def post(self, request):
+        email = request.data["email"]
+        token = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
+
+        models.Reset.objects.create(email=email, token=token)
+        url = "http://localhost:4200/reset/" + token
+
+        send_mail(
+            subject="Reset your password!",
+            message="Click <a href='%s'>here</a> to reset your password!" % url,
+            from_email="from@example.com",
+            recipient_list=[email]
+        )
+        return Response({"message": "success"})
+
+
+class ResetAPIView(APIView):
+    def post(self, request):
+        data = request.data
+
+        if data["password"] != data["password_confirm"]:
+            raise exceptions.APIException("Password do not match!")
+
+        reset_password = models.Reset.objects.filter(token=data["token"]).first()
+        if not reset_password:
+            raise exceptions.APIException("Invalid link!")
+        user = models.User.objects.filter(email=reset_password.email).first()
+
+        if not user:
+            raise exceptions.APIException("User not found!")
+
+        user.set_password(data["password"])
+        user.save()
+        return Response({"message": "success"})
