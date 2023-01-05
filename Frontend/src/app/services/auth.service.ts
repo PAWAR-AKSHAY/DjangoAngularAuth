@@ -19,4 +19,8 @@ export class AuthService {
   login(body: any){
     return this.http.post(`${environment.api}/login`, body, {withCredentials: true});
   }
+
+  user(){
+    return this.http.get(`${environment.api}/user`);
+  }
 }

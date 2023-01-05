@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { AuthService } from 'src/app/services/auth.service';
 
 @Component({
   selector: 'app-home',
@@ -6,10 +7,18 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
-
-  constructor() { }
+  message = '';
+  constructor(private authService: AuthService) { }
 
   ngOnInit(): void {
+    this.authService.user().subscribe({
+      next: (res: any) => {
+        this.message = `Hi ${res.first_name} ${res.last_name}`
+      },
+      error: err => {
+        console.log(err);
+      }
+    }); 
   }
 
 }
