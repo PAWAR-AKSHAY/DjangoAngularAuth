@@ -115,7 +115,7 @@ class ForgotAPIView(APIView):
 
         send_mail(
             subject="Reset your password!",
-            message="Click <a href='%s'>here</a> to reset your password!" % url,
+            message=f"Click on link {url} to reset your password!",
             from_email="from@example.com",
             recipient_list=[email]
         )
