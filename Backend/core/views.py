@@ -1,6 +1,7 @@
 import datetime
 import random
 import string
+import pyotp
 
 from django.core.mail import send_mail
 from rest_framework import exceptions
@@ -37,12 +38,54 @@ class LoginAPIView(APIView):
             raise exceptions.AuthenticationFailed("Invalid Credentials")
         if not user.check_password(password):
             raise exceptions.AuthenticationFailed("Invalid Credentials")
+        
+        # 1. when user tfa_secret is set we will return user id
+        if user.tfa_secret:
+            return Response({
+                "id": user.id
+            })
+        
+        # 2 when we don't have tfa_secret value, we will generated and return secret
+        secret = pyotp.random_base32()
+        otpauth_url = pyotp.totp.TOTP(secret).provisioning_uri(issuer_name="Django Angular Authentication")
 
-        access_token = create_access_token(user.id)
-        refresh_token = create_refresh_token(user.id)
+       
+        return Response({
+            "id": user.id,
+            "secret": secret,
+            "otpauth_url": otpauth_url
+        })
+
+
+class TwoFactorAPIView(APIView):
+    def post(self, request):
+        # 1.1 then send request with id here
+        id = request.data["id"]
+
+        user = models.User.filter(pk=id).first()
+
+        if not user:
+            raise exceptions.AuthenticationFailed("Invalid Credentials")
+
+        # 1.2 if user tfa_secret is set we get directly from here
+        # 2.1 when we don't have secret value then we return like else part
+        # therefore secret in these two cases won't empty
+
+        secret = user.tfa_secret if user.tfa_secret !="" else request.data["secret"]
+
+        if not pyotp.TOTP(secret).verify(request.data["code"]):
+            raise exceptions.AuthenticationFailed("Invalid Credentials")
+        
+        # this value will be set when user login first time, second time user login we will only return user id, not a qr code
+        if user.tfa_secret == "":
+            user.tfa_secret = secret
+            user.save()
+
+        access_token = create_access_token(id)
+        refresh_token = create_refresh_token(id)
 
         models.UserToken.objects.create(
-            user_id=user.id,
+            user_id=id,
             token=refresh_token,
             expire_at=datetime.datetime.utcnow() + datetime.timedelta(days=7)
         )
