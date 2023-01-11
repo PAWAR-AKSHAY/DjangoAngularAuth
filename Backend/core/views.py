@@ -62,7 +62,7 @@ class TwoFactorAPIView(APIView):
         # 1.1 then send request with id here
         id = request.data["id"]
 
-        user = models.User.filter(pk=id).first()
+        user = models.User.objects.filter(pk=id).first()
 
         if not user:
             raise exceptions.AuthenticationFailed("Invalid Credentials")
