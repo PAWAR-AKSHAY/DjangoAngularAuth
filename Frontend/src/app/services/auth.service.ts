@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { EventEmitter, Injectable } from '@angular/core';
 import { environment } from 'src/environments/environment';
 
 @Injectable({
@@ -7,7 +7,7 @@ import { environment } from 'src/environments/environment';
 })
 export class AuthService {
   accessToken = '';
-  
+  static authEmitter = new EventEmitter<boolean>(); // we only need 1 emitter in app, that is why we made it static
 
 
   constructor(private http: HttpClient) { }

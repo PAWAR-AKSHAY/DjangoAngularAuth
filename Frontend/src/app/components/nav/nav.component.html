@@ -6,7 +6,7 @@
         </ul>
 
         <div class="text-end" *ngIf="authenticated">
-          <a routerLink="/" class="btn btn-outline-light me-2" (click)="logout()">Logout</a>
+          <a routerLink="/login" class="btn btn-outline-light me-2" (click)="logout()">Logout</a>
         </div>
 
         <div class="text-end" *ngIf="!authenticated">

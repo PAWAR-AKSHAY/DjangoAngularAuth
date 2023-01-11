@@ -13,10 +13,12 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     this.authService.user().subscribe({
       next: (res: any) => {
-        this.message = `Hi ${res.first_name} ${res.last_name}`
+        this.message = `Hi ${res.first_name} ${res.last_name}`;
+        AuthService.authEmitter.emit(true);
       },
       error: err => {
-        this.message = `You are not authenticated`
+        this.message = `You are not authenticated`;
+        AuthService.authEmitter.emit(false);
       }
     }); 
   }
